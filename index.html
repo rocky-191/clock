@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模拟时钟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+        }
+
+        .clock-container {
+            position: relative;
+            width: 380px;
+            height: 380px;
+        }
+
+        canvas {
+            display: block;
+            width: 380px;
+            height: 380px;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+        }
+
+        .digital-time {
+            margin-top: 30px;
+            color: #fff;
+            font-size: 56px;
+            font-weight: 200;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .date {
+            margin-top: 15px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        .weekday-text {
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 16px;
+            letter-spacing: 2px;
+        }
+
+        .quote {
+            margin-top: 25px;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 14px;
+            letter-spacing: 1px;
+            font-style: italic;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 450px) {
+            .clock-container, canvas {
+                width: 300px;
+                height: 300px;
+            }
+            .digital-time {
+                font-size: 42px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="clock-container">
+        <canvas id="clock" width="380" height="380"></canvas>
+    </div>
+    <div class="digital-time" id="digitalTime">00:00:00</div>
+    <div class="date" id="date"></div>
+    <div class="weekday-text" id="weekdayText"></div>
+    <div class="quote">盛年不重来，一日难再晨。及时当勉励，岁月不待人。——陶渊明</div>
+
+    <script>
+        const canvas = document.getElementById('clock');
+        const ctx = canvas.getContext('2d');
+        const digitalTime = document.getElementById('digitalTime');
+        const dateEl = document.getElementById('date');
+        const weekdayTextEl = document.getElementById('weekdayText');
+
+        // 绘制时钟
+        function drawClock() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const milliseconds = now.getMilliseconds();
+
+            // 清空画布
+            ctx.clearRect(0, 0, 380, 380);
+            
+            // 画背景圆
+            ctx.beginPath();
+            ctx.arc(190, 190, 180, 0, 2 * Math.PI);
+            const gradient = ctx.createRadialGradient(190, 190, 0, 190, 190, 180);
+            gradient.addColorStop(0, '#2a2a4a');
+            gradient.addColorStop(1, '#1a1a2e');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // 画外圈
+            ctx.beginPath();
+            ctx.arc(190, 190, 180, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 画刻度
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const x1 = 190 + Math.cos(angle) * 160;
+                const y1 = 190 + Math.sin(angle) * 160;
+                const x2 = 190 + Math.cos(angle) * 180;
+                const y2 = 190 + Math.sin(angle) * 180;
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 画数字
+                const textX = 190 + Math.cos(angle) * 130;
+                const textY = 190 + Math.sin(angle) * 130;
+                ctx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i === 0 ? '12' : i.toString(), textX, textY);
+            }
+
+            // 平滑角度计算
+            const secondAngle = ((seconds + milliseconds / 1000) / 60) * 360 - 90;
+            const minuteAngle = ((minutes + seconds / 60) / 60) * 360 - 90;
+            const hourAngle = ((hours % 12 + minutes / 60) / 12) * 360 - 90;
+
+            // 画时针
+            drawHand(190, 190, 90, hourAngle, '#fff', 5);
+            // 画分针
+            drawHand(190, 190, 130, minuteAngle, 'rgba(255, 255, 255, 0.9)', 3.5);
+            // 画秒针
+            drawHand(190, 190, 150, secondAngle, '#e94560', 2);
+
+            // 画中心点
+            ctx.beginPath();
+            ctx.arc(190, 190, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#e94560';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(190, 190, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            // 更新数字时间
+            const timeStr = [hours, minutes, seconds]
+                .map(v => v.toString().padStart(2, '0'))
+                .join(':');
+            digitalTime.textContent = timeStr;
+
+            // 更新日期
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            dateEl.textContent = `${year}.${month.toString().padStart(2, '0')}.${day.toString().padStart(2, '0')}`;
+
+            // 更新星期
+            const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const dayOfWeek = now.getDay();
+            weekdayTextEl.textContent = '今天是 ' + weekdayNames[dayOfWeek];
+
+            requestAnimationFrame(drawClock);
+        }
+
+        function drawHand(x, y, length, angle, color, width) {
+            const radians = angle * Math.PI / 180;
+            const endX = x + Math.cos(radians) * length;
+            const endY = y + Math.sin(radians) * length;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // 启动
+        drawClock();
+    </script>
+</body>
+</html>
